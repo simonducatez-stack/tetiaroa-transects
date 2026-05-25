@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saisie Transects — Tetiaroa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --ocean: #0a2540;
+    --lagoon: #006d8f;
+    --foam: #e8f4f8;
+    --sand: #f5efe6;
+    --coral: #e05c3a;
+    --tern: #ffffff;
+    --text: #1a1a2e;
+    --muted: #6b7a8d;
+    --border: #c8d8e4;
+    --active: #00b4d8;
+    --success: #2ecc71;
+    --card: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--ocean);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, #00344d 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, #001a2e 0%, transparent 60%);
+  }
+
+  header {
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    color: var(--tern);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo span { color: var(--active); }
+
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.06);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .tab {
+    padding: 7px 18px;
+    border-radius: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+    border: none;
+    background: none;
+    transition: all .2s;
+  }
+  .tab.active {
+    background: var(--active);
+    color: white;
+    box-shadow: 0 2px 12px rgba(0,180,216,0.4);
+  }
+
+  .export-btn {
+    background: var(--coral);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .export-btn:hover { background: #c94e2e; transform: translateY(-1px); }
+
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* VOICE PANEL */
+  .voice-panel {
+    background: linear-gradient(135deg, rgba(0,109,143,0.3), rgba(0,52,77,0.5));
+    border: 1px solid rgba(0,180,216,0.2);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .voice-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .mic-btn {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--lagoon);
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0,109,143,0.4);
+  }
+  .mic-btn.recording {
+    background: var(--coral);
+    animation: pulse 1s infinite;
+    box-shadow: 0 0 0 0 rgba(224,92,58,0.4);
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(224,92,58,0.4); }
+    70% { box-shadow: 0 0 0 14px rgba(224,92,58,0); }
+    100% { box-shadow: 0 0 0 0 rgba(224,92,58,0); }
+  }
+
+  .transcript-box {
+    flex: 1;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: rgba(255,255,255,0.9);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    min-height: 52px;
+    line-height: 1.5;
+    min-width: 200px;
+    resize: none;
+    outline: none;
+  }
+  .transcript-box:focus { border-color: var(--active); }
+  .transcript-box::placeholder { color: rgba(255,255,255,0.3); }
+
+  .parse-btn {
+    background: rgba(0,180,216,0.15);
+    border: 1px solid var(--active);
+    color: var(--active);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .parse-btn:hover { background: rgba(0,180,216,0.25); }
+
+  .api-key-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .parse-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .voice-hint {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    font-style: italic;
+    margin-top: 8px;
+  }
+
+  /* FORM GRID */
+  .form-card {
+    background: var(--card);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+  }
+
+  .form-card-header {
+    background: var(--ocean);
+    color: rgba(255,255,255,0.7);
+    padding: 10px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-badge {
+    background: var(--active);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 9px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .field {
+    background: var(--card);
+    padding: 10px 14px 12px;
+    position: relative;
+  }
+  .field.wide { grid-column: span 2; }
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  label .req { color: var(--coral); }
+
+  input, select, textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: white;
+    transition: border-color .15s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--active);
+    box-shadow: 0 0 0 3px rgba(0,180,216,0.1);
+  }
+  .field.highlighted input,
+  .field.highlighted select,
+  .field.highlighted textarea {
+    border-color: var(--success);
+    background: #f0fff6;
+  }
+
+  /* TABLE */
+  .table-wrap {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .table-header {
+    background: var(--ocean);
+    color: rgba(255,255,255,0.7);
+    padding: 12px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .row-count {
+    background: var(--active);
+    color: white;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .data-table th {
+    background: var(--foam);
+    padding: 8px 10px;
+    text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky; top: 0;
+  }
+  .data-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #f0f4f7;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  .data-table tr:hover td { background: var(--foam); }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--coral);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background .15s;
+  }
+  .del-btn:hover { background: #fff0ee; }
+
+  .add-row-bar {
+    padding: 12px 20px;
+    background: var(--sand);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+  .add-btn {
+    background: var(--lagoon);
+    color: white;
+    border: none;
+    padding: 9px 22px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .add-btn:hover { background: #005a75; transform: translateY(-1px); }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .clear-btn:hover { border-color: var(--coral); color: var(--coral); }
+
+  .toast {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    background: var(--ocean);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all .3s;
+    z-index: 999;
+    max-width: 360px;
+    border-left: 3px solid var(--success);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-left-color: var(--coral); }
+
+  .section-divider {
+    grid-column: 1 / -1;
+    padding: 8px 14px;
+    background: var(--foam);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--lagoon);
+    border-top: 1px solid var(--border);
+  }
+
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  .scroll-table { overflow-x: auto; max-height: 380px; overflow-y: auto; }
+
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .field.wide { grid-column: span 2; }
+    header { flex-wrap: wrap; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🐦 <span>Tetiaroa</span> · Saisie terrain</div>
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchPane('transects')">Transects</button>
+    <button class="tab" onclick="switchPane('flying')">Vol</button>
+  </div>
+  <button class="export-btn" onclick="exportExcel()">⬇ Exporter Excel</button>
+</header>
+
+<div class="main">
+
+  <!-- VOICE PANEL -->
+  <div class="voice-panel">
+    <div class="api-key-row" id="apiKeyRow">
+      <span style="color:rgba(255,255,255,0.5);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;white-space:nowrap;">CLÉ API</span>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-…" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:7px 12px;color:white;font-family:'Space Mono',monospace;font-size:12px;outline:none;min-width:0;">
+      <button onclick="saveApiKey()" style="background:var(--active);border:none;color:white;padding:8px 16px;border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">ENREGISTRER</button>
+      <span id="apiKeyStatus" style="color:rgba(255,255,255,0.4);font-family:'Space Mono',monospace;font-size:11px;white-space:nowrap;"></span>
+    </div>
+    <div class="voice-row">
+      <button class="mic-btn" id="micBtn" onclick="toggleRecording()" title="Dicter une observation">🎙</button>
+      <textarea class="transcript-box" id="transcriptBox" rows="2" placeholder="Appuyez sur 🎙 puis parlez, ou tapez ici. Ex: &quot;brown noddy 3 adult pisonia inland within 3&quot;"></textarea>
+      <button class="parse-btn" id="parseBtn" onclick="parseAndFill()">
+        <span id="parseBtnText">Remplir →</span>
+      </button>
+    </div>
+    <div class="voice-hint" id="voiceHint">Chargement…</div>
+  </div>
+
+  <!-- TRANSECTS PANE -->
+  <div class="pane active" id="pane-transects">
+
+    <div class="form-card">
+      <div class="form-card-header">
+        Informations transect
+        <span class="section-badge">Contexte</span>
+      </div>
+      <div class="form-grid">
+        
+        <div class="field">
+          <label>Motu <span class="req">*</span></label>
+          <select id="t_Motu">
+            <option value="">— choisir —</option>
+            <option>Aie</option><option>Auroa</option><option>Tauini</option>
+            <option>Tiaraunu</option><option>Hiraanae</option><option>Tahuna Iti</option>
+            <option>Reiono</option><option>Tahuna Rahi</option><option>Oroatera</option>
+            <option>Rimatuu</option><option>Honuea</option><option>Onetahi</option>
+            <option>Horoatera</option><option>Tauvini</option>
+          </select>
+        </div>
+        
+        
+        <div class="field">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="t_Date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="t_Time">
+        </div>
+        <div class="field">
+          <label>Transect Start <span class="req">*</span></label>
+          <input type="text" id="t_TransectStart" placeholder="0952">
+        </div>
+        <div class="field">
+          <label>Transect End <span class="req">*</span></label>
+          <input type="text" id="t_TransectEnd" placeholder="1548">
+        </div>
+        
+        <div class="field">
+          <label>Direction</label>
+          <select id="t_TransectDirection">
+            <option value="">— choisir —</option>
+            <option>clockwise</option><option>counterclockwise</option>
+            <option>Clockwise</option><option>Sandbar</option>
+            <option>lagoon to ocean</option><option>EastToWest</option>
+            <option>WestToEast</option><option>NorthToSouth</option><option>SouthToNorth</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-card-header">
+        Observation
+        <span class="section-badge">Données</span>
+      </div>
+      <div class="form-grid">
+
+        <div class="section-divider">Localisation</div>
+
+        <div class="field">
+          <label>InlandVsSeaward</label>
+          <select id="t_InlandVsSeaward">
+            <option value="">—</option>
+            <option>Inland</option><option>Seaward</option>
+            <option>North</option><option>South</option><option>East</option>
+            <option>West</option><option>OnTransect</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Distance-m <span class="req">*</span></label>
+          <select id="t_Distance_m">
+            <option value="">—</option>
+            <option>within 3</option><option>3 to 5</option><option>over 5</option>
+            <option>0</option><option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>7</option><option>10</option>
+            <option>15</option><option>17</option><option>20</option><option>25</option>
+            <option>30</option><option>40</option><option>50</option><option>60</option>
+            <option>80</option><option>100</option><option>over 50m</option>
+            <option>crossing transect</option><option>flying across transect</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>DistFromBeginning</label>
+          <input type="text" id="t_DistFromBeginning">
+        </div>
+
+        <div class="section-divider">Espèce</div>
+
+        <div class="field">
+          <label>Species <span class="req">*</span></label>
+          <select id="t_Species" onchange="updateSpeciesName()">
+            <option value="">— choisir —</option>
+            <option>Brown noddy</option>
+            <option>Brown Booby</option>
+            <option>Red-foot</option>
+            <option>Black Noddy</option>
+            <option>Crested Tern</option>
+            <option>Sooty Tern</option>
+            <option>Grey-back</option>
+            <option>White Tern</option>
+            <option>Masked booby</option>
+            <option>Zebra dove</option>
+            <option>Grey plover</option>
+            <option>Silvereye</option>
+            <option>Chestnut</option>
+            <option>Red-tailed tropicbird</option>
+            <option>White-tailed tropicbird</option>
+            <option>Sanderling</option>
+            <option>Moth</option>
+            <option>Great frigatebird</option>
+            <option>Lesser frigatebird</option>
+            <option>frigate sp</option>
+            <option>Egret</option>
+            <option>Tattler</option>
+            <option>Plover</option>
+            <option>Curlew</option>
+            <option>Cuckoo</option>
+            <option>Bulbul</option>
+            <option>ghost crab</option>
+            <option>rock crab</option>
+            <option>Yellow nipper</option>
+            <option>Cardisoma</option>
+            <option>Coconut crab</option>
+            <option>Discoplax</option>
+            <option>Geograpsus grayi</option>
+            <option>Brevimanus</option>
+            <option>cordimanus</option>
+            <option>Marbled crab</option>
+            <option>black tip</option>
+            <option>lemon shark</option>
+            <option>Eel</option>
+            <option>BlackRat</option>
+            <option>Rat</option>
+            <option>People</option>
+            <option>NOBIRDS</option>
+          </select>
+        </div>
+        
+        
+
+        <div class="section-divider">Comptage</div>
+
+        <div class="field">
+          <label>Nb <span class="req">*</span></label>
+          <input type="number" id="t_Nb" min="0" value="">
+        </div>
+        
+        
+
+        <div class="section-divider">Description</div>
+
+        <div class="field wide">
+          <label>StageDescription</label>
+          <select id="t_StageDescription">
+            <option value="">—</option>
+            <option>egg</option><option>egg tooth</option><option>egg toothed</option>
+            <option>hatched today</option><option>naked chick</option>
+            <option>first down chick</option><option>all downy</option>
+            <option>tiny chick</option><option>small chick</option>
+            <option>half size white chick</option><option>medium chick</option>
+            <option>big white chick</option><option>full size white chick</option>
+            <option>large chick</option><option>pin feathered</option>
+            <option>pin-feathered chick</option><option>pin feathered chick</option>
+            <option>back feathered</option><option>back feathered chick</option>
+            <option>chest feathered</option><option>chest feathered chick</option>
+            <option>down on head chick</option><option>down on head</option>
+            <option>down on throat and chest</option><option>down on back</option>
+            <option>down on flanks</option><option>down beginning to cover whole body</option>
+            <option>down covering back</option><option>down covering whole body</option>
+            <option>down on head neck and flanks</option>
+            <option>thick down remain on head and wing</option>
+            <option>wisps of down</option><option>traces of down</option>
+            <option>mostly feathered</option><option>fully feathered with wisps of down</option>
+            <option>near fledged</option><option>fledgling</option>
+            <option>scaps not merged</option><option>merged scapulars</option>
+            <option>no scapulars, primaries and rectrices</option>
+            <option>primaries and rectrices no scaps</option>
+            <option>primaries and rectrices emerged</option>
+            <option>non breeding</option><option>non breeding plumage</option>
+            <option>partial breeding plumage</option><option>breeding plumage</option>
+            <option>immature</option><option>juvenile</option>
+            <option>white headed juvenile</option><option>immature with white head</option>
+            <option>immature with red head</option>
+            <option>adult</option><option>adult on egg</option><option>adult on nest</option>
+            <option>adult on empty nest</option><option>adult or juvenile</option>
+            <option>adult or juvenile on nest</option><option>adults on nest</option>
+            <option>adults on same empty nest</option><option>adult with material</option>
+            <option>male with inflated pouch</option><option>male with partly inflated pouch</option>
+            <option>juvORadult</option><option>unknown</option>
+            <option>dead</option><option>dead adult</option><option>dead fledgling</option>
+            <option>small</option><option>medium</option><option>big</option><option>large</option>
+            <option>tiny</option><option>huge</option>
+          </select>
+        </div>
+        
+        <div class="field">
+          <label>Sex</label>
+          <select id="t_Sex">
+            <option value="">—</option>
+            <option>male</option><option>female</option>
+          </select>
+        </div>
+        
+        <div class="field wide">
+          <label>Substrate</label>
+          <select id="t_Substrate">
+            <option value="">—</option>
+            <option>ground</option><option>sand</option><option>sandbar</option>
+            <option>beach</option><option>beach rock</option><option>beach sand</option>
+            <option>rock</option><option>rubble</option><option>gravel</option>
+            <option>grass</option><option>debris</option>
+            <option>Pisonia</option><option>Heliotropium</option>
+            <option>Cocos</option><option>Guettarda</option><option>Pemphis</option>
+            <option>Suriana</option><option>Pandanus</option><option>Cedar</option>
+            <option>Casuarina</option><option>Cordia</option><option>Hibiscus</option>
+            <option>Tamanu</option><option>Palm</option><option>Lantern tree</option>
+            <option>dead tree</option><option>dead branch</option><option>dead branches</option>
+            <option>dead palm</option><option>dead palm trunk</option>
+            <option>dead palm leaves</option><option>dead leaves</option>
+            <option>dead Pisonia</option><option>dead Heliotropium</option>
+            <option>dead Pemphis</option><option>under Pisonia</option>
+            <option>under Heliotropium</option><option>under Pemphis</option>
+            <option>roots</option><option>roots of Pisonia</option>
+            <option>water</option><option>miki</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Behavior</label>
+          <select id="t_Behavior">
+            <option value="">—</option>
+            <option>flushed</option><option>dead</option>
+            <option>heard only</option><option>flying</option>
+            <option>fishing</option><option>carrying material</option>
+            <option>building a nest</option><option>ran into the water</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Flying</label>
+          <select id="t_Flying">
+            <option value="">—</option>
+            <option>yes</option><option>no</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Color</label>
+          <input type="text" id="t_Color">
+        </div>
+        <div class="field">
+          <label>Height (m)</label>
+          <input type="number" id="t_Height" step="0.1">
+        </div>
+        
+        <div class="field">
+          <label>Weather</label>
+          <input type="text" id="t_Weather" placeholder="sunny, breezy…">
+        </div>
+        <div class="field wide">
+          <label>Notes</label>
+          <input type="text" id="t_Notes">
+        </div>
+        <div class="field">
+          <label>FieldIndividualID</label>
+          <input type="text" id="t_FieldIndividualID">
+        </div>
+        <div class="field">
+          <label>Observers</label>
+          <input type="text" id="t_Observers">
+        </div>
+        <div class="field">
+          <label>Repeated</label>
+          <select id="t_Repeated">
+            <option value="">—</option>
+            <option>yes</option><option>no</option>
+          </select>
+        </div>
+        
+        
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        Lignes saisies — Transects
+        <span class="row-count" id="t_rowCount">0 lignes</span>
+      </div>
+      <div class="scroll-table">
+        <table class="data-table" id="t_table">
+          <thead>
+            <tr>
+              <th>#</th><th>Motu</th><th>Date</th><th>Tr.Start</th><th>Tr.End</th>
+              <th>I/S</th><th>Dist-m</th><th>Species</th><th>Nb</th>
+              <th>Stage</th><th>Substrate</th><th>Behavior</th><th>Notes</th>
+              <th>✕</th>
+            </tr>
+          </thead>
+          <tbody id="t_tbody"></tbody>
+        </table>
+      </div>
+      <div class="add-row-bar">
+        <button class="add-btn" onclick="addTransectRow()">+ Ajouter cette ligne</button>
+        <button class="clear-btn" onclick="clearTransectForm()">Vider le formulaire</button>
+      </div>
+    </div>
+  </div><!-- /pane transects -->
+
+  <!-- FLYING COUNTS PANE -->
+  <div class="pane" id="pane-flying">
+
+    <div class="form-card">
+      <div class="form-card-header">
+        Point count — Oiseaux en vol
+        <span class="section-badge">FlyingCounts</span>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Motu <span class="req">*</span></label>
+          <select id="f_Motu">
+            <option value="">— choisir —</option>
+            <option>Aie</option><option>Auroa</option><option>Tauini</option>
+            <option>Tiaraunu</option><option>Hiraanae</option><option>Tahuna Iti</option>
+            <option>Reiono</option><option>Tahuna Rahi</option><option>Oroatera</option>
+            <option>Rimatuu</option><option>Honuea</option><option>Onetahi</option>
+            <option>Horoatera</option><option>Tauvini</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="f_Date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="f_Time">
+        </div>
+        <div class="field">
+          <label>Transect point <span class="req">*</span></label>
+          <input type="text" id="f_TransectPoint" placeholder="1149">
+        </div>
+        <div class="field">
+          <label>Species <span class="req">*</span></label>
+          <select id="f_Species" onchange="updateFlyingSpeciesName()">
+            <option value="">— choisir —</option>
+            <option>BRNO</option><option>Brown noddy</option><option>RFB</option><option>BrownBooby</option>
+            <option>BlackNoddy</option><option>Crested Tern</option>
+            <option>SootyTern</option><option>Sooty Tern</option>
+            <option>Grey-backed tern</option><option>WT</option>
+            <option>GreatFrig</option><option>LesserFrig</option>
+            <option>frigatebird sp</option><option>Egret</option>
+            <option>Tattler</option><option>NOBIRD</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>SpeciesName</label>
+          <input type="text" id="f_SpeciesName">
+        </div>
+        <div class="field">
+          <label>Nb in flight <span class="req">*</span></label>
+          <input type="number" id="f_Nb" min="0">
+        </div>
+        <div class="field">
+          <label>age/sex</label>
+          <select id="f_AgeSex">
+            <option value="">—</option>
+            <option>adult</option><option>juvenile</option><option>immature</option>
+            <option>male</option><option>female</option><option>mottled</option>
+            <option>adult white morph</option><option>white morph adult</option>
+            <option>black</option><option>white</option>
+            <option>flying low</option><option>very low</option><option>high</option>
+            <option>flying medium high</option>
+            <option>adult with material</option><option>carrying material</option>
+            <option>fishing</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Weather</label>
+          <input type="text" id="f_Weather" placeholder="breezy…">
+        </div>
+        <div class="field wide">
+          <label>Notes</label>
+          <input type="text" id="f_Notes">
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        Lignes saisies — Oiseaux en vol
+        <span class="row-count" id="f_rowCount">0 lignes</span>
+      </div>
+      <div class="scroll-table">
+        <table class="data-table" id="f_table">
+          <thead>
+            <tr>
+              <th>#</th><th>Motu</th><th>Date</th><th>Point</th>
+              <th>Species</th><th>Nb vol</th><th>Age/Sex</th><th>Notes</th>
+              <th>✕</th>
+            </tr>
+          </thead>
+          <tbody id="f_tbody"></tbody>
+        </table>
+      </div>
+      <div class="add-row-bar">
+        <button class="add-btn" onclick="addFlyingRow()">+ Ajouter cette ligne</button>
+        <button class="clear-btn" onclick="clearFlyingForm()">Vider le formulaire</button>
+      </div>
+    </div>
+  </div><!-- /pane flying -->
+
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+let transectRows = [];
+let flyingRows = [];
+let currentPane = 'transects';
+let recognition = null;
+let isRecording = false;
+let transcript = '';
+let _apiKey = '';
+
+const SPECIES_MAP = {
+  'Brown noddy': 'Anous stolidus', 'Brown Booby': 'Sula leucogaster', 'Red-foot': 'Sula sula',
+  'Black Noddy': 'Anous minutus', 'Crested Tern': 'Thalasseus bergii', 'Sooty Tern': 'Onychoprion fuscatus',
+  'Grey-back': 'Onychoprion lunatus', 'White Tern': 'Gygis alba',
+  'Masked booby': 'Sula dactylatra', 'Great frigatebird': 'Fregata minor',
+  'Lesser frigatebird': 'Fregata ariel', 'Red-tailed tropicbird': 'Phaethon rubricauda',
+  'White-tailed tropicbird': 'Phaethon lepturus',
+  'BlackNoddy': 'Aminutus', 'Crested Tern': 'Tbergii', 'SootyTern': 'Ofuscatus',
+  'WT': 'Galba', 'GreatFrig': 'Fminor', 'LesserFrig': 'Fariel',
+  'Great frigatebird': 'Fminor', 'Lesser frigatebird': 'Fariel',
+  'Egret': 'Esacra', 'Tattler': 'Tincana'
+};
+
+// ============================================================
+// PANE SWITCHING
+// ============================================================
+function switchPane(name) {
+  currentPane = name;
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ============================================================
+// API KEY
+// ============================================================
+function getApiKey() { return _apiKey; }
+
+function saveApiKey() {
+  const input = document.getElementById('apiKeyInput');
+  const key = input ? input.value.trim() : '';
+  console.log('saveApiKey called, key length:', key.length);
+  if (!key || key.length < 20) {
+    alert('Clé trop courte (' + key.length + ' caractères) — vérifiez la clé copiée');
+    return;
+  }
+  _apiKey = key;
+  try {
+    localStorage.setItem('anthropic_api_key', key);
+  } catch(e) { /* localStorage blocked, use memory only */ }
+  const status = document.getElementById('apiKeyStatus');
+  if (status) { status.textContent = '✓ clé active'; status.style.color = 'var(--success)'; }
+  if (input) { input.value = ''; input.placeholder = '(clé enregistrée — collez-en une nouvelle pour changer)'; }
+  const hint = document.getElementById('voiceHint');
+  if (hint) hint.textContent = '✓ Clé API active. Dictez ou tapez, puis cliquez Remplir.';
+  alert('✓ Clé enregistrée ! Longueur: ' + key.length + ' caractères');
+}
+
+
+function initApiKey() {
+  // Try to restore from localStorage
+  try {
+    const stored = localStorage.getItem('anthropic_api_key');
+    if (stored) _apiKey = stored;
+  } catch(e) {}
+  const key = getApiKey();
+  const status = document.getElementById('apiKeyStatus');
+  if (key) {
+    if (status) { status.textContent = '✓ clé active'; status.style.color = 'var(--success)'; }
+    const inp = document.getElementById('apiKeyInput');
+    if (inp) inp.placeholder = '(clé enregistrée — collez-en une nouvelle pour changer)';
+    const hint = document.getElementById('voiceHint');
+    if (hint) hint.textContent = '✓ Clé API active. Dictez ou tapez une observation, puis cliquez "Remplir".';
+  } else {
+    if (status) { status.textContent = '⚠ aucune clé'; status.style.color = 'var(--coral)'; }
+    const hint = document.getElementById('voiceHint');
+    if (hint) hint.textContent = 'Collez votre clé API Anthropic (sk-ant-…) dans le champ ci-dessus et cliquez ENREGISTRER.';
+  }
+}
+window.addEventListener('DOMContentLoaded', initApiKey);
+
+// ============================================================
+// VOICE RECOGNITION (transcription seulement)
+// ============================================================
+function toggleRecording() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('⚠ Reconnaissance vocale non supportée — utilisez Chrome ou Edge.', true);
+    return;
+  }
+  if (isRecording) {
+    recognition.stop();
+  } else {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      document.getElementById('micBtn').classList.add('recording');
+      document.getElementById('micBtn').textContent = '⏹';
+      const box = document.getElementById('transcriptBox');
+      box.value = '';
+      box.placeholder = '🎙 En écoute…';
+    };
+
+    let finalAccum = '';
+    recognition.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalAccum += e.results[i][0].transcript + ' ';
+        else interim = e.results[i][0].transcript;
+      }
+      transcript = (finalAccum + interim).trim();
+      document.getElementById('transcriptBox').value = transcript;
+    };
+
+    recognition.onerror = (e) => { showToast('Erreur micro: ' + e.error, true); stopRecording(); };
+    recognition.onend = () => stopRecording();
+    recognition.start();
+  }
+}
+
+function stopRecording() {
+  isRecording = false;
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('recording');
+  btn.textContent = '🎙';
+}
+
+// ============================================================
+// PARSE & FILL — via API Anthropic
+// ============================================================
+async function parseAndFill() {
+  const box = document.getElementById('transcriptBox');
+  const text = box.value.trim();
+  if (!text) { showToast('Aucun texte à analyser', true); return; }
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    showToast("⚠ Entrez d'abord votre clé API Anthropic", true);
+    return;
+  }
+
+  // Build the system prompt with all valid values
+  const isTransects = currentPane === 'transects';
+
+  const systemPrompt = isTransects ? `Tu es un assistant de saisie de données ornithologiques à Tetiaroa (Polynésie française).
+L'utilisateur dicte une observation de terrain. Extrait les informations et retourne UNIQUEMENT un objet JSON valide, sans texte avant ou après.
+
+Champs possibles et valeurs autorisées :
+
+Motu (optionnel): Aie, Auroa, Tauini, Tiaraunu, Hiraanae, Tahuna Iti, Reiono, Tahuna Rahi, Oroatera, Rimatuu, Honuea, Onetahi, Horoatera, Tauvini
+Date (optionnel): format YYYY-MM-DD
+Time (optionnel): format HH:MM
+TransectStart (optionnel): code numérique ex: 0744
+TransectEnd (optionnel): code numérique ex: 0745
+TransectDirection (optionnel): clockwise, counterclockwise, Sandbar, lagoon to ocean, EastToWest, WestToEast, NorthToSouth, SouthToNorth
+InlandVsSeaward (optionnel): Inland, Seaward, North, South, East, West, OnTransect
+Distance_m (optionnel): "within 3", "3 to 5", "over 5", ou un nombre
+Species (optionnel): BRNO (=Brown noddy), RFB (=Red-footed booby), BrownBooby, BlackNoddy, "Crested Tern", SootyTern, WT (=White tern), "Great frigatebird", "Lesser frigatebird", Egret, Tattler, Cardisoma, "ghost crab", "rock crab", "Yellow nipper", "Coconut crab", NOBIRDS
+Nb (optionnel): nombre entier
+StageDescription (optionnel): egg, "egg tooth", "egg toothed", "all downy", "first down chick", "pin feathered", "back feathered", "chest feathered", "down on head", "down on flanks", "down on back", "wisps of down", "traces of down", "fully feathered with wisps of down", "near fledged", fledgling, juvenile, "scaps not merged", "merged scapulars", "no scapulars, primaries and rectrices", "non breeding plumage", adult, "adult on nest", "adult on egg", "adult on empty nest", "adult with material", juvORadult, small, medium, big, large, dead
+AgeCategory (optionnel): adultORjuv, adult, juv, fledgling, chick, egg, nest, dead
+Substrate (optionnel): ground, sand, sandbar, beach, "beach rock", rock, rubble, debris, grass, Pisonia, Heliotropium, Cocos, Guettarda, Pemphis, Suriana, Pandanus, Cedar, Casuarina, "dead tree", "dead branch", "dead palm", "roots of Pisonia", "under Pisonia", "under Heliotropium", miki
+Behavior (optionnel): flushed, dead, "heard only", flying, fishing, "carrying material", "building a nest", "ran into the water"
+Sex (optionnel): male, female
+Notes (optionnel): texte libre
+Observers (optionnel): noms
+
+Règles:
+- "brown noddy" ou "noddy brun" → Species: "Brown noddy"  
+- "rfb" ou "red footed booby" → Species: "RFB"
+- Si un champ n'est pas mentionné, ne l'inclus PAS dans le JSON
+- Pour la date en français: "24 août 2025" → "2025-08-24"
+- Pour l'heure: "16h14" ou "16:14" → "16:14"
+- Retourne uniquement le JSON, exemple: {"Species":"Brown noddy","Nb":3,"Substrate":"Pisonia"}` 
+  : `Tu es un assistant de saisie de données ornithologiques à Tetiaroa.
+L'utilisateur dicte un comptage d'oiseaux en vol. Retourne UNIQUEMENT un objet JSON valide.
+
+Champs possibles:
+Motu: Aie, Auroa, Tauini, Tiaraunu, Hiraanae, Tahuna Iti, Reiono, Tahuna Rahi, Oroatera, Rimatuu, Honuea, Onetahi, Horoatera, Tauvini
+Date: format YYYY-MM-DD
+Time: format HH:MM
+TransectPoint: code numérique ex: 1149
+Species: BRNO, "Brown noddy", RFB, BrownBooby, BlackNoddy, "Crested Tern", SootyTern, WT, GreatFrig, LesserFrig, Egret, NOBIRD
+Nb: nombre entier
+AgeSex: adult, juvenile, immature, male, female, mottled
+Notes: texte libre
+
+Si un champ n'est pas mentionné, ne l'inclus PAS dans le JSON.
+Retourne uniquement le JSON.`;
+
+  // Show loading state
+  const btn = document.getElementById('parseBtn');
+  const btnText = document.getElementById('parseBtnText');
+  btn.disabled = true;
+  btnText.textContent = '⏳';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: text }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'Erreur API ' + response.status);
+    }
+
+    const data = await response.json();
+    const raw = data.content[0].text.trim();
+
+    // Parse JSON — strip any markdown fences just in case
+    const clean = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // Apply to form
+    let filled = 0;
+    if (isTransects) {
+      const map = {
+        Motu: 't_Motu', Date: 't_Date', Time: 't_Time',
+        TransectStart: 't_TransectStart', TransectEnd: 't_TransectEnd',
+        TransectID: 't_TransectID', TransectDirection: 't_TransectDirection',
+        InlandVsSeaward: 't_InlandVsSeaward', Distance_m: 't_Distance_m',
+        Species: 't_Species', Nb: 't_Nb', StageDescription: 't_StageDescription',
+        AgeCategory: 't_AgeCategory', Substrate: 't_Substrate',
+        Behavior: 't_Behavior', Sex: 't_Sex', Color: 't_Color',
+        Height: 't_Height', Notes: 't_Notes', Observers: 't_Observers',
+        Weather: 't_Weather', Flying: 't_Flying', OrganismType: 't_OrganismType',
+        NbSeabirds: 't_NbSeabirds', NbFlying: 't_NbFlying',
+        ChickNumericalStage: 't_ChickNumericalStage',
+        SamplingOccasion: 't_SamplingOccasion', Invasion: 't_Invasion'
+      };
+      for (const [key, id] of Object.entries(map)) {
+        if (parsed[key] !== undefined) {
+          setVal(id, String(parsed[key]));
+          filled++;
+        }
+      }
+      // Auto TransectID
+      const ts = document.getElementById('t_TransectStart').value;
+      const te = document.getElementById('t_TransectEnd').value;
+      if (ts && te && !parsed.TransectID) setVal('t_TransectID', ts + 'to' + te);
+      if (parsed.Species) updateSpeciesName();
+      highlightFilled('t_');
+    } else {
+      const map = {
+        Motu: 'f_Motu', Date: 'f_Date', Time: 'f_Time',
+        TransectPoint: 'f_TransectPoint', Species: 'f_Species',
+        Nb: 'f_Nb', AgeSex: 'f_AgeSex', Notes: 'f_Notes', Weather: 'f_Weather'
+      };
+      for (const [key, id] of Object.entries(map)) {
+        if (parsed[key] !== undefined) {
+          setVal(id, String(parsed[key]));
+          filled++;
+        }
+      }
+      if (parsed.Species) updateFlyingSpeciesName();
+      highlightFilled('f_');
+    }
+
+    showToast(filled > 0
+      ? '✓ ' + filled + ' champ(s) rempli(s) — vérifiez et cliquez "Ajouter"'
+      : "⚠ Claude n'a pas extrait de données — reformulez", filled === 0);
+
+  } catch (err) {
+    console.error(err);
+    showToast('⚠ Erreur: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'Remplir →';
+  }
+}
+
+// ============================================================
+// TRANSECTS ADD ROW
+// ============================================================
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+function setVal(id, val) {
+  if (val === undefined || val === null || val === '') return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = String(val);
+  if (el.tagName === 'SELECT') {
+    const vLow = v.toLowerCase();
+    for (let opt of el.options) {
+      if (opt.value === v) { el.value = v; return; }
+    }
+    for (let opt of el.options) {
+      if (opt.value.toLowerCase() === vLow || opt.text.toLowerCase() === vLow) {
+        el.value = opt.value; return;
+      }
+    }
+    const opt = document.createElement('option');
+    opt.value = v; opt.text = v;
+    el.appendChild(opt);
+    el.value = v;
+  } else {
+    el.value = v;
+  }
+}
+
+function highlightFilled(prefix) {
+  document.querySelectorAll('.field').forEach(f => f.classList.remove('highlighted'));
+  const ids = prefix === 't_'
+    ? ['t_Species','t_Nb','t_Distance_m','t_InlandVsSeaward','t_Substrate','t_StageDescription','t_Behavior','t_Motu','t_Date','t_Time','t_TransectStart','t_TransectEnd']
+    : ['f_Species','f_Nb','f_AgeSex','f_Motu','f_Date','f_TransectPoint'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value) el.closest('.field') && el.closest('.field').classList.add('highlighted');
+  });
+}
+
+function updateSpeciesName() {
+  const sp = document.getElementById('t_Species').value;
+  if (SPECIES_MAP[sp]) document.getElementById('t_SpeciesName').value = SPECIES_MAP[sp];
+}
+
+function updateFlyingSpeciesName() {
+  const sp = document.getElementById('f_Species').value;
+  if (SPECIES_MAP[sp]) document.getElementById('f_SpeciesName').value = SPECIES_MAP[sp];
+}
+
+
+function addTransectRow() {
+  const row = {
+    Month: getVal('t_Month'),
+    LineID: transectRows.length + 1,
+    Invasion: getVal('t_Invasion'),
+    Motu: getVal('t_Motu'),
+    SamplingOccasion: getVal('t_SamplingOccasion'),
+    Date: getVal('t_Date'),
+    Time: getVal('t_Time'),
+    TransectStart: getVal('t_TransectStart'),
+    TransectEnd: getVal('t_TransectEnd'),
+    TransectID: getVal('t_TransectID'),
+    TransectDirection: getVal('t_TransectDirection'),
+    DistanceFromBeginningofInlandTransect: getVal('t_DistFromBeginning'),
+    InlandVsSeaward: getVal('t_InlandVsSeaward'),
+    'Distance-m': getVal('t_Distance_m'),
+    Species: getVal('t_Species'),
+    SpeciesName: getVal('t_SpeciesName'),
+    OrganismType: getVal('t_OrganismType'),
+    Nb: getVal('t_Nb'),
+    NbSeabirds: getVal('t_NbSeabirds'),
+    NbFlying: getVal('t_NbFlying'),
+    StageDescription: getVal('t_StageDescription'),
+    'SeabirdMassG NOT COMPLETE FOR INLAND': getVal('t_SeabirdMassG'),
+    MassPerSeabird: getVal('t_MassPerSeabird'),
+    Sex: getVal('t_Sex'),
+    AgeCategory: getVal('t_AgeCategory'),
+    ChickNumericalStage: getVal('t_ChickNumericalStage'),
+    Substrate: getVal('t_Substrate'),
+    Behavior: getVal('t_Behavior'),
+    Flying: getVal('t_Flying'),
+    Color: getVal('t_Color'),
+    Height: getVal('t_Height'),
+    WhiteTernHeight: getVal('t_WhiteTernHeight'),
+    Weather: getVal('t_Weather'),
+    Notes: getVal('t_Notes'),
+    FieldIndividualID: getVal('t_FieldIndividualID'),
+    Observers: getVal('t_Observers'),
+    Repeated: getVal('t_Repeated')
+  };
+
+  if (!row.Motu || !row.Species) {
+    showToast('⚠ Motu et Species sont requis', true);
+    return;
+  }
+
+  transectRows.push(row);
+  renderTransectTable();
+  clearTransectForm(true);
+    showToast('✓ Ligne ' + row.LineID + ' ajoutée (' + row.Species + ' · ' + row.Motu + ')');
+}
+
+function renderTransectTable() {
+  const tbody = document.getElementById('t_tbody');
+  tbody.innerHTML = '';
+  transectRows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${r.Motu}</td>
+      <td>${r.Date}</td>
+      <td>${r.TransectStart}</td>
+      <td>${r.TransectEnd}</td>
+      <td>${r.InlandVsSeaward}</td>
+      <td>${r['Distance-m']}</td>
+      <td><b>${r.Species}</b></td>
+      <td>${r.Nb}</td>
+      <td>${r.StageDescription}</td>
+      <td>${r.Substrate}</td>
+      <td>${r.Behavior}</td>
+      <td title="${r.Notes}">${(r.Notes||'').substring(0,25)}</td>
+      <td><button class="del-btn" onclick="deleteTransectRow(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('t_rowCount').textContent = transectRows.length + ' ligne' + (transectRows.length > 1 ? 's' : '');
+}
+
+function deleteTransectRow(i) {
+  transectRows.splice(i, 1);
+  transectRows.forEach((r, j) => r.LineID = j + 1);
+  renderTransectTable();
+}
+
+function clearTransectForm(keepContext = false) {
+  const keep = ['t_Month','t_Motu','t_SamplingOccasion','t_Invasion','t_Date','t_TransectStart','t_TransectEnd','t_TransectID','t_TransectDirection','t_Observers','t_Weather'];
+  const allFields = ['t_Month','t_Invasion','t_Motu','t_SamplingOccasion','t_Date','t_Time','t_TransectStart','t_TransectEnd','t_TransectID','t_TransectDirection','t_DistFromBeginning','t_InlandVsSeaward','t_Distance_m','t_Species','t_SpeciesName','t_OrganismType','t_Nb','t_NbSeabirds','t_NbFlying','t_StageDescription','t_SeabirdMassG','t_MassPerSeabird','t_Sex','t_AgeCategory','t_ChickNumericalStage','t_Substrate','t_Behavior','t_Flying','t_Color','t_Height','t_WhiteTernHeight','t_Weather','t_Notes','t_FieldIndividualID','t_Observers','t_Repeated'];
+  allFields.forEach(id => {
+    if (keepContext && keep.includes(id)) return;
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.field').forEach(f => f.classList.remove('highlighted'));
+  transcript = '';
+  document.getElementById('transcriptBox').value = '';
+}
+
+// ============================================================
+// FLYING COUNTS ADD ROW
+// ============================================================
+function addFlyingRow() {
+  const row = {
+    EntryOrder: flyingRows.length + 1,
+    Motu: getVal('f_Motu'),
+    Date: getVal('f_Date'),
+    Time: getVal('f_Time'),
+    'Transect point': getVal('f_TransectPoint'),
+    Species: getVal('f_Species'),
+    SpeciesName: getVal('f_SpeciesName'),
+    'Nb in flight': getVal('f_Nb'),
+    'age/sex': getVal('f_AgeSex'),
+    weather: getVal('f_Weather'),
+    notes: getVal('f_Notes')
+  };
+
+  if (!row.Motu || !row.Species) {
+    showToast('⚠ Motu et Species sont requis', true);
+    return;
+  }
+
+  flyingRows.push(row);
+  renderFlyingTable();
+  clearFlyingForm(true);
+    showToast('✓ Ligne vol ' + row.EntryOrder + ' ajoutée (' + row.Species + ')');
+}
+
+function renderFlyingTable() {
+  const tbody = document.getElementById('f_tbody');
+  tbody.innerHTML = '';
+  flyingRows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${r.Motu}</td>
+      <td>${r.Date}</td>
+      <td>${r['Transect point']}</td>
+      <td><b>${r.Species}</b></td>
+      <td>${r['Nb in flight']}</td>
+      <td>${r['age/sex']}</td>
+      <td title="${r.notes}">${(r.notes||'').substring(0,30)}</td>
+      <td><button class="del-btn" onclick="deleteFlyingRow(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('f_rowCount').textContent = flyingRows.length + ' ligne' + (flyingRows.length > 1 ? 's' : '');
+}
+
+function deleteFlyingRow(i) {
+  flyingRows.splice(i, 1);
+  flyingRows.forEach((r, j) => r.EntryOrder = j + 1);
+  renderFlyingTable();
+}
+
+function clearFlyingForm(keepContext = false) {
+  const keep = ['f_Motu','f_Date','f_TransectPoint','f_Weather'];
+  const allFields = ['f_Motu','f_Date','f_Time','f_TransectPoint','f_Species','f_SpeciesName','f_Nb','f_AgeSex','f_Weather','f_Notes'];
+  allFields.forEach(id => {
+    if (keepContext && keep.includes(id)) return;
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.field').forEach(f => f.classList.remove('highlighted'));
+  if (!keepContext) { transcript = ''; document.getElementById('transcriptBox').value = ''; }
+}
+
+// ============================================================
+// EXPORT EXCEL
+// ============================================================
+// Convert "HH:MM" string → decimal fraction of day (Excel time format)
+function toExcelTime(str) {
+  if (!str) return '';
+  const parts = str.split(':');
+  if (parts.length < 2) return str;
+  const h = parseInt(parts[0]);
+  const m = parseInt(parts[1]);
+  if (isNaN(h) || isNaN(m)) return str;
+  return (h + m/60) / 24;
+}
+
+// Convert "YYYY-MM-DD" string → JS Date (interpreted as local date, not UTC)
+function toExcelDate(str) {
+  if (!str) return '';
+  const [y, m, d] = str.split('-').map(Number);
+  if (!y || !m || !d) return str;
+  return new Date(y, m - 1, d); // local midnight → SheetJS writes as date cell
+}
+
+function exportExcel() {
+  if (transectRows.length === 0 && flyingRows.length === 0) {
+    showToast('⚠ Aucune donnée à exporter', true);
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // Transect sheet
+  const tCols = ['Month','LineID','Invasion','Motu','SamplingOccasion','Date','Time','TransectStart','TransectEnd','TransectID','TransectDirection','DistanceFromBeginningofInlandTransect','InlandVsSeaward','Distance-m','Species','SpeciesName','OrganismType','Nb','NbSeabirds','NbFlying','StageDescription','SeabirdMassG NOT COMPLETE FOR INLAND','MassPerSeabird','Sex','AgeCategory','ChickNumericalStage','Substrate','Behavior','Flying','Color','Height','WhiteTernHeight','Weather','Notes','FieldIndividualID','Observers','Repeated'];
+  const tData = transectRows.map(r => tCols.map(c => {
+    if (c === 'Date') return toExcelDate(r[c]);
+    if (c === 'Time') return toExcelTime(r[c]);
+    return r[c] !== undefined ? r[c] : '';
+  }));
+  const wsT = XLSX.utils.aoa_to_sheet([tCols, ...tData]);
+  // Apply date format to the Date column (col index 5 = F)
+  const tDateColIdx = tCols.indexOf('Date');
+  tData.forEach((_, i) => {
+    const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: tDateColIdx });
+    if (wsT[cellRef] && wsT[cellRef].v instanceof Date) {
+      wsT[cellRef].t = 'd';
+      wsT[cellRef].z = 'DD/MM/YYYY';
+    }
+  });
+  XLSX.utils.book_append_sheet(wb, wsT, 'TransectData');
+
+  // Flying sheet
+  const fCols = ['EntryOrder','Motu','Date','Time','Transect point','Species','SpeciesName','Nb in flight','age/sex','weather','notes'];
+  const fData = flyingRows.map(r => fCols.map(c => {
+    if (c === 'Date') return toExcelDate(r[c]);
+    if (c === 'Time') return toExcelTime(r[c]);
+    return r[c] !== undefined ? r[c] : '';
+  }));
+  const wsF = XLSX.utils.aoa_to_sheet([fCols, ...fData]);
+  const fDateColIdx = fCols.indexOf('Date');
+  fData.forEach((_, i) => {
+    const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: fDateColIdx });
+    if (wsF[cellRef] && wsF[cellRef].v instanceof Date) {
+      wsF[cellRef].t = 'd';
+      wsF[cellRef].z = 'DD/MM/YYYY';
+    }
+  });
+  XLSX.utils.book_append_sheet(wb, wsF, 'FlyingPointCounts');
+
+  const date = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `Transects_Tetiaroa_${date}.xlsx`);
+  showToast('✓ Fichier Excel exporté (' + transectRows.length + ' transect + ' + flyingRows.length + ' vol)');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (error ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
